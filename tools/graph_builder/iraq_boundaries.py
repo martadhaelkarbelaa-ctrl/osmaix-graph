@@ -11,6 +11,25 @@ from datetime import datetime
 from pathlib import Path
 
 
+def approved_exclusion(relation_id, tags, members):
+    """Owner-approved exception for one observed non-governorate, not a filter.
+
+    Match the reviewed metadata so a future repaired/redefined relation is
+    validated normally. Never exclude another malformed boundary by similarity.
+    """
+    if (relation_id == 21118515
+            and tags.get('name') == 'حدود حي الامين'
+            and tags.get('admin_level') == '4'
+            and tags.get('boundary') == 'administrative'
+            and tags.get('type') == 'boundary'
+            and not tags.get('ISO3166-2')
+            and sorted(members) == [('n',14027644388,'label'),('r',21118480,'subarea')]):
+        return dict(relationId=relation_id, name=tags['name'],
+                    reason='Owner-approved exclusion: neighbourhood relation misclassified as admin-4; no outer ways',
+                    approvalDate='2026-10-27', evidenceRun=40419993981)
+    return None
+
+
 def tile_id(relation_id, tags):
     value = tags.get('ISO3166-2')
     if not value: return f'osm-r{relation_id}'
@@ -37,7 +56,7 @@ def timestamp_ms(value):
 def extract(path):
     import osmium
     from shapely.geometry import shape, mapping
-    countries, candidates, errors = {}, {}, []
+    countries, candidates, errors, excluded = {}, {}, [], []
     class Metadata(osmium.SimpleHandler):
         def relation(self, r):
             t = dict(r.tags)
@@ -45,7 +64,10 @@ def extract(path):
             if t.get('boundary') != 'administrative': return
             if t.get('admin_level') == '2' and t.get('ISO3166-1:alpha2',t.get('ISO3166-1')) == 'IQ':
                 countries[r.id] = (t,members)
-            if t.get('admin_level') == '4': candidates[r.id] = (t,members)
+            if t.get('admin_level') == '4':
+                exception = approved_exclusion(r.id,t,members)
+                if exception: excluded.append(exception)
+                else: candidates[r.id] = (t,members)
     Metadata().apply_file(str(path))
     if len(countries) != 1: raise ValueError(f'Expected one Iraq country relation, got {len(countries)}')
     country_id = next(iter(countries))
@@ -120,6 +142,7 @@ def extract(path):
     with osmium.io.Reader(str(path)) as reader:
         snapshot = timestamp_ms(reader.header().get('osmosis_replication_timestamp'))
     return dict(snapshot=snapshot,governorates=governors,errors=errors,
+                excludedRelations=sorted(excluded,key=lambda e:e['relationId']),
                 expectedGovernorates=19, governorateCount=len(governors),
                 governorateCountWarning=None if len(governors)==19 else f'Expected 19, found {len(governors)}')
 
@@ -155,6 +178,6 @@ if __name__ == '__main__':
     a=p.parse_args();result=extract(a.pbf)
     a.output.parent.mkdir(parents=True,exist_ok=True)
     a.output.write_text(json.dumps(result,ensure_ascii=False,sort_keys=True)+'\n')
-    print(json.dumps({k:result[k] for k in ('snapshot','governorateCount','governorateCountWarning','errors')},ensure_ascii=False))
+    print(json.dumps({k:result[k] for k in ('snapshot','governorateCount','governorateCountWarning','excludedRelations','errors')},ensure_ascii=False))
     print(json.dumps([{'id':g['id'],'name':g['nameAr']} for g in result['governorates']],ensure_ascii=False))
     if result['errors'] or not result['governorates']: raise SystemExit('Incomplete boundaries; publication blocked')

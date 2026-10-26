@@ -16,7 +16,7 @@ from graph_builder import Way, Relation, build, CAR, WALK, PENALTY
 from graph_v2 import subset, encode, alt_tables, alt_bound, adjacency, distances, summary
 from inspect_graph import inspect
 from build_iraq import national_graph, write_tile, build_atlas, compare_outputs
-from iraq_boundaries import tile_id, metadata_error, timestamp_ms
+from iraq_boundaries import tile_id, metadata_error, timestamp_ms, approved_exclusion
 
 GEOMETRY = all(importlib.util.find_spec(n) for n in ('shapely','pyproj'))
 FIXTURE = Path(__file__).resolve().parents[1]/'fixtures'/'tiny_v2'
@@ -54,6 +54,17 @@ def tiles():
 
 
 class V2Test(unittest.TestCase):
+    def test_approved_boundary_exception_is_exact_and_expires_on_geometry_change(self):
+        tags={'name':'حدود حي الامين','admin_level':'4','boundary':'administrative','type':'boundary'}
+        members=[('r',21118480,'subarea'),('n',14027644388,'label')]
+        self.assertEqual(approved_exclusion(21118515,tags,members)['relationId'],21118515)
+        self.assertIsNotNone(approved_exclusion(21118515,tags,members[::-1]))
+        self.assertIsNone(approved_exclusion(21118516,tags,members))
+        self.assertIsNone(approved_exclusion(21118515,tags,members+[('w',1,'outer')]))
+        self.assertIsNone(approved_exclusion(21118515,{**tags,'ISO3166-2':'IQ-KA'},members))
+        self.assertIsNone(approved_exclusion(21118515,{**tags,'name':'Different boundary'},members))
+        self.assertEqual(metadata_error(tags,members),'Boundary has no outer ways')
+
     def test_v2_roundtrip(self):
         for g in tiles():
             d=inspect(encode(g))

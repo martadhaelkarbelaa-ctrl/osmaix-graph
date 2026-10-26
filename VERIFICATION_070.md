@@ -2,12 +2,13 @@
 
 ## Owner input / gates
 
-No signing key is needed or requested. Stage A is blocked by source boundary
-relation 21118515. Run 40419489184 found 19 complete governorates plus that
-unresolved admin-4 relation, and failed before map building/publication. Keep the
-strict boundary gate. Source correction followed by a new Geofabrik snapshot, or
-an explicit revised owner policy for this anomalous relation, is needed to unblock.
-No new Iraq-dependent Android integration may start before stage A is accepted.
+No signing key is needed or requested. On 2026-10-27 the owner explicitly
+approved excluding relation 21118515 only from governorate selection. The
+exception matches the reviewed name, tags and exact subarea/label members;
+changed geometry or another relation goes through normal strict validation.
+The exclusion is recorded in boundaries.json and report.json. Stage A still
+requires a successful full Actions build with verify_determinism=true before
+new Iraq-dependent Android integration can proceed.
 
 ## Implemented and tested locally
 
@@ -83,3 +84,11 @@ Binary bbox keeps the national grid reference frame. Manifest geography uses
 lon/lat GeoJSON and must use polygonGeometry for holes or disconnected islands.
 Raw/overlap counts are storage totals. Via-way and conditional restrictions remain
 reported limitations, not enforced restrictions.
+
+## Approved exception implementation — awaiting new Actions run
+
+- Local suite: 44 discovered, 40 passed and four geometry tests skipped because
+  Shapely/pyproj are CI-only in this executor. Compileall passed.
+- Added regression coverage: only the approved relation matches; changed name,
+  ISO, geometry or relation ID cannot inherit the exception.
+- Previous failed runs below remain historical evidence, not current success.

@@ -119,6 +119,7 @@ def build_atlas(nodes,ways,relations,boundaries,out,compression='gzip',enforce_a
                 governorateCount=len(manifest['governorates']),expectedGovernorates=19,
                 governorateNames=[g['nameAr'] for g in manifest['governorates']],
                 governorateCountWarning=boundaries.get('governorateCountWarning'),
+                excludedBoundaryRelations=boundaries.get('excludedRelations',[]),
                 nationalRestrictionAccounting={k:national_report[k] for k in
                     ('appliedRestrictionRelations','ignoredRestrictionRelations','prohibitedTurns')},
                 compression=compression,
