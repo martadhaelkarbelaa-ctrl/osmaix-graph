@@ -36,8 +36,14 @@ No new Iraq-dependent Android integration may start before stage A is accepted.
 - Verification artifact: iraq-graph-verification-40419489184, ID 12697417069.
 - Live OSM API inspection found the relation named "حدود حي الامين", admin_level=4,
   with only subarea relation 21118480 and label node 14027644388; no outer ways.
-  Its child is tagged admin_level=8. The next diagnostic run reports the exact
-  tags/members from the input PBF, without changing the acceptance rule.
+  Its child is tagged admin_level=8.
+- Diagnostic run 40419993981 at commit 2ca79d590fb65735ed2e1ba18ca02eb45b3a20f9
+  confirmed the exact same tags and members from the PBF snapshot; geometryError
+  is "Boundary has no outer ways". All 43 tests passed in 0.62s, then the boundary
+  gate failed as required. Artifact ID 12697287970 (397,611 bytes):
+  https://github.com/martadhaelkarbelaa-ctrl/osmaix-graph/actions/runs/40419993981
+- graph-latest still contains its original manifest updated 2026-10-26T22:36:39Z;
+  neither Iraq run reached the release publication step.
 
 ## Implemented but awaiting real national build verification
 
