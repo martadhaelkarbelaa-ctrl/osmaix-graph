@@ -203,7 +203,7 @@ def can_arrive(edge, node):
         edge[0] == node and not edge[7] & ONEWAY_FWD)
 
 
-def build(nodes, ways, relations, region, bbox, source_ms, build_ms=None):
+def build(nodes, ways, relations, region, bbox, source_ms, build_ms=None, *, node_ids_out=None, restriction_audit_out=None):
     if not re.fullmatch(r"[a-z0-9_-]{1,80}", region):
         raise ValueError("Invalid region identifier")
     if len(bbox) != 4 or not (-90 <= bbox[0] < bbox[2] <= 90 and -180 <= bbox[1] < bbox[3] <= 180):
@@ -235,6 +235,8 @@ def build(nodes, ways, relations, region, bbox, source_ms, build_ms=None):
             if not (math.isfinite(lat) and math.isfinite(lon) and -90 <= lat <= 90 and -180 <= lon <= 180):
                 raise ValueError(f"Invalid coordinate at node {n}")
     used_cuts = sorted(cuts & set(usage))
+    if node_ids_out is not None:
+        node_ids_out.extend(used_cuts)
     ids = {n: i for i, n in enumerate(used_cuts)}
     names = sorted({s for w in ways for s in (w.tags.get("name:ar") or w.tags.get("name"), w.tags.get("ref")) if s})
     name_ids = {s: i for i, s in enumerate(names)}
@@ -272,29 +274,36 @@ def build(nodes, ways, relations, region, bbox, source_ms, build_ms=None):
         by_role = {role: [(kind, ref) for kind, ref, rr in r.members if rr == role] for role in ("from", "via", "to")}
         if any(kind == "w" for kind, _ in by_role["via"]):
             reasons["via_way"] += 1
+            if restriction_audit_out is not None: restriction_audit_out.append((r.id, "via_way"))
             continue
         if any(len(by_role[x]) != 1 for x in by_role):
             reasons["unsupported_members"] += 1
+            if restriction_audit_out is not None: restriction_audit_out.append((r.id, "unsupported_members"))
             continue
         if any(k in r.tags for k in ("restriction:conditional", "restriction:motorcar:conditional", "restriction:motor_vehicle:conditional")):
             reasons["conditional"] += 1
+            if restriction_audit_out is not None: restriction_audit_out.append((r.id, "conditional"))
             continue
         if set(r.tags.get("except", "").replace(" ", "").split(";")) & {"motorcar", "motor_vehicle", "vehicle"}:
             reasons["car_exempt"] += 1
+            if restriction_audit_out is not None: restriction_audit_out.append((r.id, "car_exempt"))
             continue
         typ = r.tags.get("restriction:motorcar", r.tags.get("restriction:motor_vehicle", r.tags.get("restriction", "")))
         if typ not in SUPPORTED_TURNS:
             reasons["unsupported_type"] += 1
+            if restriction_audit_out is not None: restriction_audit_out.append((r.id, "unsupported_type"))
             continue
         (fk, fw), (vk, vn), (tk, tw) = (by_role[x][0] for x in ("from", "via", "to"))
         if (fk, vk, tk) != ("w", "n", "w") or vn not in ids:
             reasons["unresolved"] += 1
+            if restriction_audit_out is not None: restriction_audit_out.append((r.id, "unresolved"))
             continue
         via = ids[vn]
         incoming = [e for e in way_edges[fw] if can_arrive(edges[e], via)]
         permitted = {e for e in way_edges[tw] if can_depart(edges[e], via)}
         if not incoming or not permitted:
             reasons["unresolved"] += 1
+            if restriction_audit_out is not None: restriction_audit_out.append((r.id, "unresolved"))
             continue
         for first in incoming:
             targets = {first} & permitted if typ.endswith("u_turn") and fw == tw else permitted
@@ -302,6 +311,7 @@ def build(nodes, ways, relations, region, bbox, source_ms, build_ms=None):
                        if typ.startswith("only_") else targets)
             restrictions.update((first, via, last, 0) for last in targets)
         applied_relations += 1
+        if restriction_audit_out is not None: restriction_audit_out.append((r.id, "applied"))
     grid = defaultdict(set)
     scale = math.pi/180*RADIUS/250
     cosine = math.cos(math.radians((bbox[0]+bbox[2])/2))

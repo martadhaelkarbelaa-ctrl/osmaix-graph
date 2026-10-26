@@ -1,107 +1,112 @@
-name: Build public OSM road graph
+name: Build Iraq road tiles
 on:
   schedule:
     - cron: '0 3 * * 5'
   workflow_dispatch:
     inputs:
-      region:
-        description: Region
-        type: choice
-        options: [karbala]
-        default: karbala
+      verify_determinism:
+        description: Rebuild the same snapshot and compare all bytes
+        type: boolean
+        default: false
 permissions:
   contents: write
 concurrency:
-  group: osm-graph-${{ github.event.inputs.region || 'karbala' }}
+  group: graph-iraq-release
   cancel-in-progress: false
 jobs:
   build:
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
-    env:
-      REGION: ${{ github.event.inputs.region || 'karbala' }}
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-          cache: pip
-          cache-dependency-path: tools/graph_builder/requirements.txt
-      - name: Check PyPI releases and install recorded dependencies
+      - name: Check PyPI versions and record dependencies
         run: python tools/graph_builder/install_ci_dependencies.py --output out/build_dependencies.json
-      - name: Install OSM extraction tools
+      - name: Install source tools
         run: |
           sudo apt-get update
-          sudo apt-get install --no-install-recommends -y osmium-tool
-      - name: Fixture acceptance tests
-        run: python -m pytest tools/graph_builder/tests -q
-      - name: Download OSM source and derive actual governorate bounds
+          sudo apt-get install --no-install-recommends -y osmium-tool zstd
+      - name: All fixture and geometry tests must run
+        run: |
+          python -m pytest tools/graph_builder/tests -q --junitxml=out/tests.xml
+          python - <<'PY'
+          import xml.etree.ElementTree as ET
+          root = ET.parse('out/tests.xml').getroot()
+          assert not root.findall('.//skipped'), 'No skipped geometry tests permitted in CI'
+          PY
+      - name: Download exactly one Iraq snapshot
         run: |
           mkdir -p work out
-          curl --fail --location --retry 3 --max-time 900 \
+          curl --fail --location --retry 3 --max-time 1800 \
             https://download.geofabrik.de/asia/iraq-latest.osm.pbf -o work/iraq.osm.pbf
-          python tools/graph_builder/resolve_region.py work/iraq.osm.pbf \
-            --region "$REGION" --output work/region.json
-          python - <<'PY'
-          import json, os, subprocess
-          from pathlib import Path
-          config=json.loads(Path('work/region.json').read_text())
-          south,west,north,east=config['bbox']
-          subprocess.run(['osmium','extract','-b',f'{west},{south},{east},{north}',
-              '--strategy=complete_ways','work/iraq.osm.pbf','-o','work/region.osm.pbf'],check=True)
-          subprocess.run(['osmium','tags-filter','work/region.osm.pbf',
-              'w/highway','r/type=restriction','-o','work/roads.osm.pbf'],check=True)
-          subprocess.run(['python','tools/graph_builder/graph_builder.py','work/roads.osm.pbf',
-              '--region',os.environ['REGION'],'--bbox',*map(str,config['bbox']),
-              '--source-timestamp',config['sourceTimestamp'],'--output','out'],check=True)
-          PY
-      - name: Validate real output and compare repeated PBF builds
+          osmium fileinfo work/iraq.osm.pbf
+      - name: Extract and validate all governorate boundaries
+        run: python tools/graph_builder/iraq_boundaries.py work/iraq.osm.pbf --output out/boundaries.json
+      - name: Build validate compress and hash every tile
+        env:
+          VERIFY_DETERMINISM: ${{ inputs.verify_determinism || 'false' }}
         run: |
-          python - <<'PY'
-          import json, os, sys
-          from pathlib import Path
-          sys.path.insert(0,'tools/graph_builder')
-          from graph_builder import build, read_osm
-          from inspect_graph import inspect
-          manifest=json.loads(Path('out/manifest.json').read_text())
-          data=Path('out',manifest['file']).read_bytes()
-          graph=inspect(data,manifest)
-          rebuilt,_,_=build(*read_osm('work/roads.osm.pbf'),os.environ['REGION'],
-                           manifest['bbox'],manifest['sourceTimestamp'])
-          assert data == rebuilt, 'Real PBF graph is not deterministic'
-          report=json.loads(Path('out/report.json').read_text())
-          assert report['edges'] > 100, 'Suspiciously empty regional graph'
-          assert report['largestCarWeakComponentEdges'] > 100, 'Missing car network'
-          assert report['largestCarWeakComponentRatio'] >= 0.9, (
-              'CAR weak connectivity below 0.9; inspect report components before publishing: '
-              + str(report['otherCarWeakComponentsOver20']))
-          date=__import__('datetime').datetime.fromtimestamp(
-              manifest['sourceTimestamp']/1000,__import__('datetime').timezone.utc).strftime('%Y%m%d')
-          tag=f"graph-{os.environ['REGION']}-{date}"
-          # Immutable dated URL; graph-latest is updated only after dated upload succeeds.
-          manifest['downloadUrl']=f"https://github.com/{os.environ['GITHUB_REPOSITORY']}/releases/download/{tag}/{manifest['file']}"
-          Path('out/manifest.json').write_text(json.dumps(manifest,indent=2)+'\n')
-          Path('out/SHA256SUMS').write_text(manifest['sha256']+'  '+manifest['file']+'\n')
-          with open(os.environ['GITHUB_ENV'],'a') as f: f.write('GRAPH_TAG='+tag+'\n')
-          PY
-      - name: Keep CI output for inspection
+          args=()
+          if [ "$VERIFY_DETERMINISM" = true ]; then args+=(--verify-determinism); fi
+          python tools/graph_builder/build_iraq.py work/iraq.osm.pbf \
+            --boundaries out/boundaries.json --output out/tiles \
+            --repository "$GITHUB_REPOSITORY" "${args[@]}"
+      - name: Verification artifacts (including on failure)
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: graph-${{ env.REGION }}
-          path: out/
+          name: iraq-graph-verification-${{ github.run_id }}
+          path: |
+            out/*.json
+            out/*.xml
+            out/tiles/*.json
           if-no-files-found: warn
-      - name: Publish OSM-derived graph only
+      - name: Publish dated assets then latest manifest
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if ! gh release view "$GRAPH_TAG" >/dev/null 2>&1; then
-            gh release create "$GRAPH_TAG" --title "$GRAPH_TAG" \
-              --notes '© OpenStreetMap contributors. ODbL-1.0. See report.json for unsupported restrictions. No personal GPS or overlays.'
+          set -euo pipefail
+          # Include only the explicitly enumerated public OSM assets.
+          python - <<'PY'
+          import json, pathlib
+          root=pathlib.Path('out/tiles')
+          manifest=json.loads((root/'manifest.json').read_text())
+          files=['manifest.json','report.json']+[e['compressed']['file'] for e in [manifest['backbone'],*manifest['governorates']]]
+          for name in files:
+              p=root/name
+              assert p.is_file() and p.stat().st_size < 2_000_000_000, name
+          pathlib.Path('work/assets.txt').write_text('\n'.join(str(root/f) for f in files)+'\n')
+          PY
+          mapfile -t assets < work/assets.txt
+          # Dated assets are immutable: a rerun of the same snapshot must have
+          # identical hashes; never clobber files referenced by an active manifest.
+          if gh release view "$GRAPH_TAG" >/dev/null 2>&1; then
+            mkdir -p work/existing
+            gh release download "$GRAPH_TAG" --pattern manifest.json --dir work/existing
+            cmp out/tiles/manifest.json work/existing/manifest.json
+          else
+            gh release create "$GRAPH_TAG" --draft --title "$GRAPH_TAG" \
+              --notes '© OpenStreetMap contributors. ODbL-1.0. Public OSM-derived data only; see report.json for limitations.'
+            gh release upload "$GRAPH_TAG" "${assets[@]}"
+            gh release edit "$GRAPH_TAG" --draft=false
           fi
-          gh release upload "$GRAPH_TAG" out/* --clobber
+          # Verify every dated asset exists with its declared compressed size
+          # before replacing graph-latest. A partial prior upload fails closed.
+          gh release view "$GRAPH_TAG" --json assets > work/published-assets.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          actual={a['name']:a['size'] for a in json.loads(Path('work/published-assets.json').read_text())['assets']}
+          m=json.loads(Path('out/tiles/manifest.json').read_text())
+          for e in [m['backbone'],*m['governorates']]:
+              c=e['compressed'];assert actual.get(c['file'])==c['bytes'],c['file']
+          for f in ('manifest.json','report.json'): assert f in actual
+          PY
           if ! gh release view graph-latest >/dev/null 2>&1; then
-            gh release create graph-latest --title 'Latest regional graph manifest' \
-              --notes 'Manifest points to a dated graph release. © OpenStreetMap contributors, ODbL-1.0.'
+            gh release create graph-latest --title 'Latest Iraq map manifest' \
+              --notes 'Manifest points to immutable dated OSM assets. © OpenStreetMap contributors, ODbL-1.0.'
           fi
-          gh release upload graph-latest out/manifest.json --clobber
+          gh release upload graph-latest out/tiles/manifest.json --clobber
+          printf 'Published %s\n' "$GRAPH_TAG" >> "$GITHUB_STEP_SUMMARY"

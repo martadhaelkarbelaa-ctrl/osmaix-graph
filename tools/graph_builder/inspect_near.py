@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Private, local-only road inspection. Never invoke this CLI in CI.
 
-Usage: python inspect_near.py region.osmxg LAT LON RADIUS_METRES
+Usage: python inspect_near.py LAT LON RADIUS_METRES region.osmxg
 Coordinates are supplied at runtime; never commit personal inspection outputs.
 """
 import argparse
@@ -56,10 +56,10 @@ def near(graph, lat, lon, radius):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("graph", type=Path)
     parser.add_argument("lat", type=float)
     parser.add_argument("lon", type=float)
     parser.add_argument("radius", type=float)
+    parser.add_argument("graph", type=Path)
     parser.add_argument("--manifest", type=Path, help="Optional independently obtained SHA-256 manifest")
     args = parser.parse_args()
     manifest = json.loads(args.manifest.read_text()) if args.manifest else None
