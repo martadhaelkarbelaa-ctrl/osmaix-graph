@@ -98,7 +98,12 @@ def extract(path):
         belongs = code.startswith('IQ-') or rid in subareas or (poly is not None and country.covers(poly.representative_point()))
         if not belongs:
             if poly is None and not code:
-                errors.append({'relationId':rid,'error':'Unresolved admin-4 without country/ISO identity'})
+                errors.append({'relationId':rid,'name':tags.get('name'),
+                               'error':'Unresolved admin-4 without country/ISO identity',
+                               'geometryError':completeness(rid),
+                               'tags':tags,
+                               'members':[{'type':kind,'ref':ref,'role':role}
+                                          for kind,ref,role in members]})
             continue
         problem = completeness(rid)
         if problem or poly is None:

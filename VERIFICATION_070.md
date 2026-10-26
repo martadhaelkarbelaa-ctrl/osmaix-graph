@@ -2,9 +2,12 @@
 
 ## Owner input / gates
 
-No signing key is needed or requested. Real graph acceptance requires an Actions
-run with verify_determinism=true. Remote execution status will be recorded after
-publication. No Android stage 2 work may start before stage A is accepted.
+No signing key is needed or requested. Stage A is blocked by source boundary
+relation 21118515. Run 40419489184 found 19 complete governorates plus that
+unresolved admin-4 relation, and failed before map building/publication. Keep the
+strict boundary gate. Source correction followed by a new Geofabrik snapshot, or
+an explicit revised owner policy for this anomalous relation, is needed to unblock.
+No new Iraq-dependent Android integration may start before stage A is accepted.
 
 ## Implemented and tested locally
 
@@ -20,7 +23,23 @@ publication. No Android stage 2 work may start before stage A is accepted.
 - `python3 -m compileall -q tools/graph_builder`: successful.
 - No PBF/map data downloaded and no Android build performed in this executor.
 
-## Implemented but awaiting Actions integration tests
+## Actions evidence
+
+- Commit aaa9c8927c8a6ee7d491470ea20d4a4784d57c2d, run
+  https://github.com/martadhaelkarbelaa-ctrl/osmaix-graph/actions/runs/40419489184
+- All 43 tests passed, including all four Shapely/pyproj integration tests.
+- One Iraq PBF was downloaded in Actions: 91,307,126 bytes; header snapshot
+  2026-10-25T21:21:21Z (1792963281000).
+- 19 complete governorates found, including Halabja (osm-r3826029).
+- Boundary validation failed on relation 21118515. No Iraq graph/release was
+  published and graph-latest was not changed by this run.
+- Verification artifact: iraq-graph-verification-40419489184, ID 12697417069.
+- Live OSM API inspection found the relation named "حدود حي الامين", admin_level=4,
+  with only subarea relation 21118480 and label node 14027644388; no outer ways.
+  Its child is tagged admin_level=8. The next diagnostic run reports the exact
+  tags/members from the input PBF, without changing the acceptance rule.
+
+## Implemented but awaiting real national build verification
 
 - PBF boundaries from actual Iraq/admin4 relations; invalid, missing or nested
   geometry fails closed. Actual count/names recorded, not forced to 19.
@@ -34,11 +53,15 @@ publication. No Android stage 2 work may start before stage A is accepted.
 
 ## Not implemented / not verified
 
-- No real Iraq tile, actual governorate count, size, or real network connectivity
-  has been measured yet. No run/release success is claimed without a remote run.
+- No real Iraq tile sizes, ALT, determinism, or backbone connectivity have been
+  measured: extraction failed before those stages. Governorate count was measured.
 - Private alley diagnosis awaits real gov-iq-ka. It must remain local/private.
-- Android stages 2–9, TileManager, unified router, UI and field tests remain
-  unimplemented. Original app remains com.osmaix.navigation, versionCode 56.
+- The remote private app branch update/070 already contains earlier v1/Karbala
+  stages 2–4 at 5c76e8ea13a067e8b574ded7c72d7aceda769bff; stage-4 run
+  40417996096 passed. This was discovered after the older local checkpoint was
+  recovered. That newer branch has not been overwritten or modified here.
+- Iraq v2 TileManager/unified routing integration and later app stages remain
+  pending. Original app identity/signing/version have not been changed here.
 - No APK, certificate, new key, migration, phone performance, or field result.
 
 ## Design notes for the next stage

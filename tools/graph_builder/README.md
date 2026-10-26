@@ -21,10 +21,12 @@ python3 -m pip install -r tools/graph_builder/requirements.txt
 python3 -m pytest tools/graph_builder/tests
 ```
 
-For a real region use the workflow steps: download the Iraq PBF, derive the
-governorate bounding box from its administrative boundary with a 5 km margin,
-`osmium extract --strategy=complete_ways`, retain highway ways and restriction
-relations with referenced nodes, build and independently validate the file.
+For the current Iraq workflow, use one PBF snapshot and extract complete admin-4
+polygons. Build national topology once, select the backbone and its directed ALT
+tables, and intersect full edge geometry with each polygon buffered by 3 km.
+Write v2 tiles, validate their structure and raw/compressed hashes, and perform
+the requested same-snapshot deterministic rebuild before publication. Missing
+or nested boundary geometry blocks publication; bounding boxes are not substitutes.
 The published payload is exclusively OSM-derived. Private overlays and GPS
 traces never enter this pipeline.
 
@@ -37,5 +39,5 @@ The archive's VERIFICATION_070.md records exactly which checks ran.
 Continuation changes: WALK+CAR uses 15 km/h and PENALTY; ACCESS_NO preserves
 an explicit legal prohibition for future manual-only changes. Full production
 verification requires the public graph workflow and recorded Actions evidence.
-`inspect_near.py GRAPH LAT LON RADIUS` is for local diagnosis after downloading
+`inspect_near.py LAT LON RADIUS GRAPH` is for local diagnosis after downloading
 a verified graph artifact. Do not put its personal inputs/output in CI or git.
