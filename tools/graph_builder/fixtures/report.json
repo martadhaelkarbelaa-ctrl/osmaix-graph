@@ -1,0 +1,108 @@
+{
+  "accessPrivateEdges": 1,
+  "appliedRestrictionRelations": 2,
+  "attribution": "© OpenStreetMap contributors",
+  "bytes": 4108,
+  "edges": 55,
+  "edgesByClass": {
+    "footway": 1,
+    "primary": 2,
+    "residential": 51,
+    "service_access": 1
+  },
+  "explicitNoEdges": 0,
+  "geometryPoints": 112,
+  "gridCells": 11,
+  "ignoredRestrictionRelations": {
+    "via_way": 1
+  },
+  "largestCarWeakComponentEdges": 49,
+  "largestCarWeakComponentRatio": 0.9245283018867925,
+  "license": "ODbL-1.0",
+  "limitations": [
+    "via-way and conditional restrictions are reported, not applied",
+    "No buildings, live closures, or personal permissions are included"
+  ],
+  "longestCarEdges": [
+    {
+      "edgeId": 48,
+      "highwayClass": "residential",
+      "lengthM": 204.9,
+      "name": null,
+      "osmWayId": 300
+    },
+    {
+      "edgeId": 49,
+      "highwayClass": "residential",
+      "lengthM": 204.9,
+      "name": null,
+      "osmWayId": 300
+    },
+    {
+      "edgeId": 24,
+      "highwayClass": "residential",
+      "lengthM": 111.2,
+      "name": "Column 0",
+      "osmWayId": 200
+    },
+    {
+      "edgeId": 25,
+      "highwayClass": "residential",
+      "lengthM": 111.2,
+      "name": "Column 0",
+      "osmWayId": 200
+    },
+    {
+      "edgeId": 26,
+      "highwayClass": "residential",
+      "lengthM": 111.2,
+      "name": "Column 0",
+      "osmWayId": 200
+    },
+    {
+      "edgeId": 27,
+      "highwayClass": "residential",
+      "lengthM": 111.2,
+      "name": "Column 0",
+      "osmWayId": 200
+    },
+    {
+      "edgeId": 28,
+      "highwayClass": "residential",
+      "lengthM": 111.2,
+      "name": "Column 1",
+      "osmWayId": 201
+    },
+    {
+      "edgeId": 29,
+      "highwayClass": "residential",
+      "lengthM": 111.2,
+      "name": "Column 1",
+      "osmWayId": 201
+    },
+    {
+      "edgeId": 30,
+      "highwayClass": "residential",
+      "lengthM": 111.2,
+      "name": "Column 1",
+      "osmWayId": 201
+    },
+    {
+      "edgeId": 31,
+      "highwayClass": "residential",
+      "lengthM": 111.2,
+      "name": "Column 1",
+      "osmWayId": 201
+    }
+  ],
+  "namedCarEdgesRatio": 0.9056603773584906,
+  "nodes": 34,
+  "onewayEdges": 3,
+  "otherCarWeakComponentsOver20": [],
+  "prohibitedTurns": 8,
+  "regionId": "tiny",
+  "roundaboutEdges": 2,
+  "sourceTimestamp": 1767225600000,
+  "walkEdges": 1,
+  "walkEdgesWithCarGrant": 0
+}

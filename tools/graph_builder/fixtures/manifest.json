@@ -1,0 +1,14 @@
+{
+  "bbox": [
+    32.59,
+    44.0,
+    32.62,
+    44.04
+  ],
+  "bytes": 4108,
+  "file": "tiny.osmxg",
+  "formatVersion": 1,
+  "regionId": "tiny",
+  "sha256": "ad4384cc089332a479a6b98858f0182f0300dcf65016d7cc494bf88c4804860a",
+  "sourceTimestamp": 1767225600000
+}

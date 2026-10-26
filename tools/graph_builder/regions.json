@@ -1,0 +1,9 @@
+{
+  "karbala": {
+    "boundary_tag": "ISO3166-2",
+    "boundary_value": "IQ-KA",
+    "admin_level": "4",
+    "margin_m": 5000,
+    "description": "Resolve governorate extent from the same Iraq PBF; never guess a city-sized bbox."
+  }
+}

@@ -1,0 +1,7 @@
+__pycache__/
+.pytest_cache/
+*.pyc
+work/
+out/
+*.osm.pbf
+*inspect*output*.json
